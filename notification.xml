@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.widget.RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorAccent"
+    tools:context="com.csudh.healthapp.csudhhealthapp.NotificationActivity">
+
+    <EditText
+        android:id="@+id/editTextComments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/buttonSend"
+        android:layout_marginBottom="31dp"
+        android:layout_marginLeft="20dp"
+        android:cursorVisible="true"
+        android:ems="10"
+        android:hint="Comments"
+        android:inputType="textMultiLine"
+        android:textColor="@color/common_google_signin_btn_text_dark_default"
+        android:textColorHint="@android:color/background_light"
+        android:textCursorDrawable="@null"
+        android:textSize="22sp"
+        android:layout_alignRight="@+id/spinnerBloodTypeNotification"
+        android:layout_alignEnd="@+id/spinnerBloodTypeNotification" />
+
+    <Button
+        android:id="@+id/buttonSend"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="Arial"
+        android:text="Send"
+        android:textSize="28sp"
+        android:layout_alignBaseline="@+id/buttonCancel"
+        android:layout_alignBottom="@+id/buttonCancel"
+        android:layout_alignLeft="@+id/editTextComments"
+        android:layout_alignStart="@+id/editTextComments"
+        android:layout_marginLeft="13dp"
+        android:layout_marginStart="13dp" />
+
+    <Button
+        android:id="@+id/buttonCancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/editTextComments"
+        android:layout_alignRight="@+id/editTextComments"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginRight="16dp"
+        android:fontFamily="Arial"
+        android:paddingLeft="15dp"
+        android:text="Cancel"
+        android:textSize="28sp" />
+
+    <Spinner
+        android:id="@+id/spinnerBloodTypeNotification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/editTextComments"
+        android:layout_marginBottom="25dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:entries="@array/spinnerItems"
+        android:paddingRight="50dp"
+        android:theme="@style/spinnerTheme" />
+
+</android.widget.RelativeLayout>
