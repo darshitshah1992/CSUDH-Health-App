@@ -1,33 +1,33 @@
 package com.csudh.healthapp.csudhhealthapp;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
-import android.content.Context;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
-import com.csudh.healthapp.csudhhealthapp.R;
 
+import com.github.mikephil.charting.charts.Chart;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
-import com.github.mikephil.charting.formatter.DefaultValueFormatter;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -38,7 +38,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -78,6 +77,7 @@ public class HomepageActivity extends AppCompatActivity {
     int countOMinus = 0;
     int countHH = 0;
     int countTotal=0;
+    private ProgressDialog mProgress;
     //
 
     @Override
@@ -87,6 +87,40 @@ public class HomepageActivity extends AppCompatActivity {
         radioGroupRequestType = (RadioGroup)findViewById(R.id.radioGroupRequestType);
         textViewWelcomeMessage = (TextView) findViewById(R.id.textViewWelcomeMessage);
         pieChart = (PieChart) findViewById(R.id.chart1);
+
+        mProgress = new ProgressDialog(this);
+        mProgress.setTitle("Processing...");
+        mProgress.setMessage("Please wait...");
+        mProgress.setCancelable(false);
+        mProgress.setIndeterminate(true);
+
+        Bundle bundle = getIntent().getExtras();
+        if(bundle!=null && !bundle.isEmpty() && Boolean.parseBoolean(bundle.get("flag").toString())==true)
+        {
+            String requestType = bundle.get("requestType").toString();
+            String bloodType = bundle.get("bloodType").toString();
+            String comment = bundle.get("comment").toString();
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this,R.style.alertDialog);
+            builder.setMessage("Request type: "+requestType+"\nRequired blood type: "+bloodType+"\nComments: "+comment);
+            builder.setPositiveButton("OK", null);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            dialog.getWindow().setLayout(800,500);
+            bundle.putString("flag","false");
+        }
+
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.logo); //Converting drawable into bitmap
+        ResizeBitmapImage resizeBitmapImage = new ResizeBitmapImage();
+        Bitmap new_icon = resizeBitmapImage.resizeBitmapImageFn(icon, 150); //resizing the bitmap
+        Drawable d = new BitmapDrawable(getResources(),new_icon); //Converting bitmap into drawable
+
+        getSupportActionBar().setLogo(d);
+        getSupportActionBar().setDisplayUseLogoEnabled(true);
+        getSupportActionBar().setTitle("");
+
+
         auth = FirebaseAuth.getInstance();
 
         if(auth!=null)
@@ -180,15 +214,15 @@ public class HomepageActivity extends AppCompatActivity {
     }
 
     private void logout() {
-        if(auth!=null) {
-            auth.signOut();
-            Intent intent = new Intent(getApplicationContext(), com.csudh.healthapp.csudhhealthapp.LogInActivity.class);
-            startActivity(intent);
-        }
+        confirmLogOut();
+    }
+
+    @Override
+    public void onBackPressed(){
+        logout();
     }
 
     public void addListenerOnBloodRequiredButton() {
-
         final boolean flag=true;
         buttonBloodRequired = (Button) findViewById(R.id.buttonBloodRequired);
 
@@ -197,7 +231,12 @@ public class HomepageActivity extends AppCompatActivity {
             @Override
             public void onClick(View arg0) {
                 if(isRequestTypeValid()) {
-                    Intent intent = new Intent(getApplicationContext(), com.csudh.healthapp.csudhhealthapp.NotificationActivity.class);
+                    Intent intent = new Intent(getApplicationContext(), NotificationActivity.class);
+                    RadioButton radioButton = (RadioButton) findViewById(radioGroupRequestType.getCheckedRadioButtonId());
+                    Bundle bundle = new Bundle();
+                    bundle.putInt("requestTypeId", radioGroupRequestType.getCheckedRadioButtonId());
+                    bundle.putString("requestTypeName",radioButton.getText().toString());
+                    intent.putExtras(bundle);
                     startActivity(intent);
                 }
 
@@ -209,7 +248,7 @@ public class HomepageActivity extends AppCompatActivity {
 
     private boolean isRequestTypeValid()
     {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this,R.style.alertDialog);
         builder.setTitle("Please select request type");
         //builder.setMessage("Please select one Option");
         builder.setPositiveButton("OK", null);
@@ -219,7 +258,7 @@ public class HomepageActivity extends AppCompatActivity {
         if (checkedRadioButtonId == -1) {
             // No item selected
             dialog.show();
-            dialog.getWindow().setLayout(800,350);
+            dialog.getWindow().setLayout(800,380);
             /*TextView messageText = (TextView)dialog.findViewById(android.R.id.message);
             messageText.setGravity(Gravity.CENTER);
             Button button = (Button) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
@@ -315,11 +354,54 @@ public class HomepageActivity extends AppCompatActivity {
             Paint p = pieChart.getPaint(pieChart.PAINT_DESCRIPTION);
             p.setColor(Color.WHITE);
             pieChart.setDescription("");
+            pieChart.setNoDataText("click here");
+
             Legend legend = pieChart.getLegend();
             legend.setEnabled(false);
             legend.setTextColor(Color.WHITE);
-            //pieChart.animateY(3000);
         }
 
     }
+
+    private void confirmLogOut() {
+
+
+        final AlertDialog alertDialog = new AlertDialog.Builder(HomepageActivity.this, R.style.alertDialog).create();
+
+        alertDialog.setMessage("Are you sure you want to sign out?");
+        alertDialog.setButton(alertDialog.BUTTON_POSITIVE, "No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+
+
+        alertDialog.setButton(alertDialog.BUTTON_NEGATIVE,"Yes", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                mProgress.show();
+                dialog.dismiss();
+                if(auth!=null) {
+                    auth.signOut();
+                    Intent intent = new Intent(getApplicationContext(), com.csudh.healthapp.csudhhealthapp.LogInActivity.class);
+                    startActivity(intent);
+                    mProgress.dismiss();
+                    onBackPressed();
+                    finish();
+                }
+            }
+        });
+        alertDialog.show();
+        alertDialog.getWindow().setLayout(880,375);
+        final Button positiveButton = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        final Button negativeButton = alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+
+        LinearLayout.LayoutParams positiveButton1 = (LinearLayout.LayoutParams) positiveButton.getLayoutParams();
+        positiveButton1.weight = 10;
+        positiveButton.setLayoutParams(positiveButton1);
+        negativeButton.setLayoutParams(positiveButton1);
+    }
+
 }

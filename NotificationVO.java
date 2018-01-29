@@ -13,6 +13,33 @@ public class NotificationVO {
     private int activeFlag;
     private String crtDate;
     private String lstUpdtDate;
+    private int requestTypeId;
+    private String requestTypeName;
+    private String toSendUid;
+
+    public String getToSendUid() {
+        return toSendUid;
+    }
+
+    public void setToSendUid(String toSendUid) {
+        this.toSendUid = toSendUid;
+    }
+
+    public int getRequestTypeId() {
+        return requestTypeId;
+    }
+
+    public void setRequestTypeId(int requestTypeId) {
+        this.requestTypeId = requestTypeId;
+    }
+
+    public String getRequestTypeName() {
+        return requestTypeName;
+    }
+
+    public void setRequestTypeName(String requestTypeName) {
+        this.requestTypeName = requestTypeName;
+    }
 
     public String getCrtDate() {
         return crtDate;

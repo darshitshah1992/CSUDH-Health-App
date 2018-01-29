@@ -3,6 +3,10 @@ package com.csudh.healthapp.csudhhealthapp;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -68,6 +72,10 @@ public class RegisterActivity extends AppCompatActivity {
         editTextBirthDate = (EditText) findViewById(R.id.editTextBirthDate);
         spinnerBloodType = (Spinner) findViewById(R.id.spinnerBloodType);
         buttonRegisterNewUser = (Button) findViewById(R.id.buttonRegisterNewUser);
+
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        getSupportActionBar().setTitle("");
+
         resetScreen();
         auth = FirebaseAuth.getInstance();
 
@@ -339,9 +347,10 @@ public class RegisterActivity extends AppCompatActivity {
             person.setBloodTypeName(spinnerBloodType.getSelectedItem().toString());
             person.setBloodTypeId(Integer.valueOf(String.valueOf(spinnerBloodType.getSelectedItemId())));
             person.setDateOfBirth(editTextBirthDate.getText().toString());
+            person.setTokenId("");
 
-            String currentDateandTime = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss").format(new Date());
-            person.setCrtDate(currentDateandTime);
+            String currentDateAndTime = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss").format(new Date());
+            person.setCrtDate(currentDateAndTime);
             person.setActiveFlag(1);
 
             DatabaseReference users = myRef.child("users");

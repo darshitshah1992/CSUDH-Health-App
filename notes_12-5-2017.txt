@@ -1,0 +1,2 @@
+1. notifications - requested updates have been implemented. Please place the file in the desired folder.
+2. strings - added values for notification page. Please place this latest file in values folder.

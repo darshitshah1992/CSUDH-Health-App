@@ -1,7 +1,14 @@
 package com.csudh.healthapp.csudhhealthapp;
 
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
@@ -9,21 +16,23 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.csudh.healthapp.csudhhealthapp.R;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
 
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -48,11 +57,40 @@ public class NotificationActivity extends AppCompatActivity {
     int bloodTypeABMinus = 6;
     int bloodTypeHH = 9;
     private DatabaseReference root,users;
+    String requestTypeName;
+    String notificationKeys;
+    int requestTypeId = -1;
+    DatabaseReference myRef;
+    String sendUserId="CQDoH870EbOjqCzZZj6QK1VBQR42";
+    private ProgressDialog mProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.notification);
+
+        mProgress = new ProgressDialog(this);
+        mProgress.setTitle("Processing...");
+        mProgress.setMessage("Please wait...");
+        mProgress.setCancelable(false);
+        mProgress.setIndeterminate(true);
+
+        TextView textView = (TextView) findViewById(R.id.textViewRequestType);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.logo); //Converting drawable into bitmap
+        ResizeBitmapImage resizeBitmapImage = new ResizeBitmapImage();
+        Bitmap new_icon = resizeBitmapImage.resizeBitmapImageFn(icon, 150); //resizing the bitmap
+        Drawable d = new BitmapDrawable(getResources(),new_icon); //Converting bitmap into drawable
+
+        Bundle bundle = getIntent().getExtras();
+        requestTypeId = bundle.getInt("requestTypeId");
+        requestTypeName =  bundle.getString("requestTypeName"); //getIntent().getStringExtra("requestTypeName");
+
+        textView.setText(" Request Type: "+ requestTypeName);
+
+        getSupportActionBar().setLogo(d);
+        getSupportActionBar().setDisplayUseLogoEnabled(true);
+        getSupportActionBar().setTitle("");
 
         auth = FirebaseAuth.getInstance();
         if(auth!=null)
@@ -70,8 +108,7 @@ public class NotificationActivity extends AppCompatActivity {
                             @Override
                             public void onDataChange(DataSnapshot snapshot) {
                                 loggedInPerson = snapshot.getValue(Person.class);
-                                Toast.makeText(getApplicationContext(), "Hi, " + loggedInPerson.getFirstName(),
-                                        Toast.LENGTH_SHORT).show();
+                                notificationKeys = loggedInPerson.getNotificationKeys();
                             }
 
                             @Override
@@ -80,6 +117,18 @@ public class NotificationActivity extends AppCompatActivity {
                             }
 
                         });
+
+                users.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        if(dataSnapshot.getValue(Person.class).getBloodTypeId()==8)
+                        sendUserId = dataSnapshot.getValue(Person.class).getUid();
+                    }
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
             }
         }
         editTextComments = (EditText) findViewById(R.id.editTextComments);
@@ -105,11 +154,7 @@ public class NotificationActivity extends AppCompatActivity {
     }
 
     private void logout() {
-        if(auth!=null) {
-            auth.signOut();
-            Intent intent = new Intent(getApplicationContext(), com.csudh.healthapp.csudhhealthapp.LogInActivity.class);
-            startActivity(intent);
-        }
+        confirmLogOut();
     }
 
     public void addListenerOnSendButton() {
@@ -122,20 +167,25 @@ public class NotificationActivity extends AppCompatActivity {
             public void onClick(View arg0) {
 
                 if(isNotificationDetailsValid()) {
+                    mProgress.show();
                     NotificationVO notificationVO = prepareNotificationVO();
-                    Toast.makeText(getApplicationContext(), "Notification VO, " +  notificationVO.getBloodTypeName(),
-                            Toast.LENGTH_SHORT).show();
                     if(notificationVO!=null && loggedInPerson!=null)
                     {
-                        NotificationVO[] currentNotificationVO = new NotificationVO[1];
-                        currentNotificationVO[0] = new NotificationVO();
-                        currentNotificationVO[0] = notificationVO;
-                        loggedInPerson.setNotificationVOArr(currentNotificationVO);
+                        final ArrayList<Integer> compatibleDataType = getCompatibleBloodType();
+                        FirebaseDatabase database = FirebaseDatabase.getInstance();
+                        myRef = database.getReference();
+                        DatabaseReference notificationDetails = myRef.child("notificationDetails").child(auth.getCurrentUser().getUid());
+                        String key = notificationDetails.push().getKey();
+                        notificationDetails.child(key).setValue(notificationVO);
 
-                        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("csudh-health-app");
-                        dbRef.child("token").setValue(FirebaseInstanceId.getInstance().getToken());
+                        if(notificationKeys!=null){
+                            notificationKeys = notificationKeys + "," + key;
+
+                            myRef.child("users").child(auth.getCurrentUser().getUid()).child("notificationKeys").setValue(notificationKeys);
+                            Toast.makeText(NotificationActivity.this, "Request has been sent to desired users", Toast.LENGTH_SHORT).show();
+                        }
                     }
-
+                    mProgress.dismiss();
                     Intent intent = new Intent(context, HomepageActivity.class);
                     startActivity(intent);
                 }
@@ -162,10 +212,19 @@ public class NotificationActivity extends AppCompatActivity {
     {
         NotificationVO notificationVO = new NotificationVO();
         notificationVO.setBloodTypeId(Integer.parseInt((String.valueOf(spinnerBloodTypeNotification.getSelectedItemId()))));
-        notificationVO.setComments(editTextComments.getText().toString());
+        if(!editTextComments.getText().toString().isEmpty()) {
+            notificationVO.setComments(editTextComments.getText().toString());
+        }
+        else {
+            notificationVO.setComments("-");
+        }
         notificationVO.setBloodTypeName(spinnerBloodTypeNotification.getSelectedItem().toString());
         notificationVO.setActiveFlag(1);
-        notificationVO.setCrtDate(DateFormat.getDateTimeInstance().format(new Date()));
+        String currentDateAndTime = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss").format(new Date());
+        notificationVO.setCrtDate(currentDateAndTime);
+        notificationVO.setRequestTypeId(requestTypeId);
+        notificationVO.setRequestTypeName(requestTypeName);
+        notificationVO.setToSendUid(sendUserId);
 
         return notificationVO;
     }
@@ -283,5 +342,44 @@ public class NotificationActivity extends AppCompatActivity {
         }
 
         return compatibleBloodTypeList;
+    }
+
+    private void confirmLogOut() {
+
+
+        final AlertDialog alertDialog = new AlertDialog.Builder(NotificationActivity.this, R.style.alertDialog).create();
+
+        alertDialog.setMessage("Are you sure you want to sign out?");
+        alertDialog.setButton(alertDialog.BUTTON_POSITIVE, "No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+
+
+        alertDialog.setButton(alertDialog.BUTTON_NEGATIVE,"Yes", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                if(auth!=null) {
+                    auth.signOut();
+                    Intent intent = new Intent(getApplicationContext(), com.csudh.healthapp.csudhhealthapp.LogInActivity.class);
+                    startActivity(intent);
+                    onBackPressed();
+                    finish();
+                }
+            }
+        });
+        alertDialog.show();
+        alertDialog.getWindow().setLayout(880,375);
+        final Button positiveButton = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        final Button negativeButton = alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+
+        LinearLayout.LayoutParams positiveButton1 = (LinearLayout.LayoutParams) positiveButton.getLayoutParams();
+        positiveButton1.weight = 10;
+        positiveButton.setLayoutParams(positiveButton1);
+        negativeButton.setLayoutParams(positiveButton1);
     }
 }
